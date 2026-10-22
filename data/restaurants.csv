@@ -1,0 +1,4 @@
+restaurant_name,address,restaurant_group_id,phone,max_capacity_guests
+Bistro Central,"123 Albert St, Brisbane QLD 4000",RG001,+61732111111,120
+Bistro Central,"45 Boundary St, West End QLD 4101",RG001,+61732222222,85
+Rossi Osteria,"88 Brunswick St, Fortitude Valley QLD 4006",RG002,+61733333333,60

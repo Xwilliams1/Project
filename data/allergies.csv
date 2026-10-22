@@ -1,0 +1,4 @@
+allergy_id,customer_first_name,customer_last_name,customer_phone,allergy_name,severity_level,staff_notes
+ALL001,Alice,Williams,+61488888888,Peanuts,High,Anaphylactic - completely airborne.
+ALL002,Alice,Williams,+61488888888,Shellfish,High,Severe - cannot use shared grill space.
+ALL003,Bob,Davis,+61499999999,Dairy,Medium,Intolerant - avoid butter finishes on steaks.

@@ -1,0 +1,4 @@
+order_item_id,order_id,menu_item_id,quantity,line_total
+ORDITM001,ORD001,MENU001,1,26.50
+ORDITM002,ORD001,MENU002,1,12.00
+ORDITM003,ORD002,MENU003,1,24.00

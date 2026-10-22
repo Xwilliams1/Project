@@ -1,0 +1,5 @@
+assignment_id,employee_id,restaurant_name,restaurant_address,role
+ASG001,EMP001,Bistro Central,"123 Albert St, Brisbane QLD 4000",General Manager
+ASG002,EMP001,Bistro Central,"45 Boundary St, West End QLD 4101",General Manager
+ASG003,EMP002,Bistro Central,"123 Albert St, Brisbane QLD 4000",Floor Staff
+ASG004,EMP003,Rossi Osteria,"88 Brunswick St, Fortitude Valley QLD 4006",Head Chef

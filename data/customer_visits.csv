@@ -1,0 +1,3 @@
+visit_id,restaurant_name,restaurant_address,customer_first_name,customer_last_name,customer_phone,visit_date,checked_in_by_staff_id
+VISIT001,Bistro Central,"123 Albert St, Brisbane QLD 4000",Alice,Williams,+61488888888,2026-10-10,EMP001
+VISIT002,Rossi Osteria,"88 Brunswick St, Fortitude Valley QLD 4006",Bob,Davis,+61499999999,2026-10-12,EMP003

@@ -1,0 +1,3 @@
+owner_id,restaurant_group_id,first_name,last_name,address,phone,email,dob
+OWN001,RG001,Lachlan,Murdoch,"78 Edward St, Brisbane QLD 4000",+61433333333,lachlan@brisbanebistros.com,1978-08-19
+OWN002,RG002,Sofia,Rossi,"12 Ocean Dr, Surfers Paradise QLD 4217",+61444444444,sofia@italianconcepts.com,1982-01-30

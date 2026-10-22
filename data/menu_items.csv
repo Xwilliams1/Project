@@ -1,0 +1,4 @@
+menu_item_id,restaurant_name,restaurant_address,item_name,category,price
+MENU001,Bistro Central,"123 Albert St, Brisbane QLD 4000",Wagyu Beef Burger,Main,26.50
+MENU002,Bistro Central,"123 Albert St, Brisbane QLD 4000",Truffle Fries,Sides,12.00
+MENU003,Rossi Osteria,"88 Brunswick St, Fortitude Valley QLD 4006",Woodfired Margherita,Main,24.00

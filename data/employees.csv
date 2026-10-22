@@ -1,0 +1,4 @@
+employee_id,restaurant_group_id,first_name,last_name,address,phone,email,dob,base_annual_salary
+EMP001,RG001,David,Smith,"12 Merivale St, South Brisbane QLD 4101",+61455555555,david.smith@brisbanebistros.com,1992-05-14,65000
+EMP002,RG001,Emma,Jones,"78 Given Terr, Paddington QLD 4064",+61466666666,emma.jones@brisbanebistros.com,1995-09-22,62000
+EMP003,RG002,Oliver,Brown,"34 Sandgate Rd, Albion QLD 4010",+61477777777,oliver.brown@rossiosteria.com,1990-02-11,70000
