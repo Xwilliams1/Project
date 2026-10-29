@@ -1,8 +1,4 @@
 #!/usr/bin/env python3
-from restaurant_app.models import (
-    SuperAdmin, RestaurantGroup, Owner, Restaurant,
-    Employee, EmployeeRestaurant, Customer, Allergy, Booking
-)
 import os
 import csv
 import django
@@ -17,13 +13,15 @@ django.setup()
 # =====================================================================
 # SECTION 2: ARCHITECTURAL DATA BLUEPRINTS AFTER SETUP
 # =====================================================================
-
+from restaurant_app.models import (
+    SuperAdmin, RestaurantGroup, Owner, Restaurant,
+    Employee, EmployeeRestaurant, Customer, Allergy, Booking
+)
 
 def parse_date(date_str):
     if not date_str or date_str.strip() == '':
         return None
     return datetime.strptime(date_str.strip(), '%Y-%m-%d').date()
-
 
 def run_ingestion():
     print("🚀 Starting synchronized CSV data ingestion into PostgreSQL...")
@@ -188,17 +186,17 @@ def run_ingestion():
                         booking_date=parse_date(row['booking_date']),
                         booking_time=row['booking_time'].strip(),
                         defaults={
-                            'guest_count': int(row['guest_count']),
+                            'guest_count': int(row['guest_count'].strip()),
                             'occasion': row['occasion'].strip(),
-                            'status': row['status'].strip().upper(),
-                            'customer_notes': f"Original CSV ID: {row['booking_id'].strip()}"
+                            'status': row['status'].strip().upper() if 'status' in row else 'CONFIRMED'
                         }
                     )
-            except Exception:
+            except Exception as e:
+                print(f"⚠️ Skipping booking row due to a parsing anomaly: {e}")
                 continue
     print("✅ Bookings loaded.")
-    print("🎉 All 9 synthetic test datasets successfully seeded into PostgreSQL!")
 
+    print("\n🎉 Synchronization complete! All operational records successfully committed.")
 
 if __name__ == '__main__':
     run_ingestion()

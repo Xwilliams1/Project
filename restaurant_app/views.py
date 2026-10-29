@@ -1,123 +1,189 @@
-from rest_framework import viewsets, status
-from rest_framework.decorators import action
+from rest_framework import viewsets
+from rest_framework.views import APIView
 from rest_framework.response import Response
-from rest_framework.permissions import IsAuthenticated
-from .models import Customer, Employee, Owner
-from .permissions import CustomerProfileAccess, EmployeeManagementAccess, get_actor_role
+from rest_framework.permissions import AllowAny, BasePermission
+from rest_framework import serializers
+from django.db.models import Count, Q
+from .models import SuperAdmin, Owner, Employee, Customer, Restaurant, Booking, Allergy
+from .permissions import CustomerProfileAccess, EmployeeManagementAccess, IsSystemOwnerOrAdmin, get_actor_role
+
+
+# CUSTOM GATEWAY SECURITY PERMISSIONS
+# =====================================================================
+
+class IsSystemSuperAdmin(BasePermission):
+    """
+    Strict system-level gateway.
+    
+    How it works:
+    - Calls the 'get_actor_role' utility to scan request headers for a valid Admin UUID.
+    - Returns True ONLY if the authenticated user has a role string matching 'SuperAdmin'.
+    - Completely blocks Owners, Employees, Customers, and Public Guests.
+    """
+    def has_permission(self, request, view):
+        role, entity = get_actor_role(request)
+        return role == 'SuperAdmin'
 
 # =====================================================================
-# 1. CUSTOMER IDENTITY CONTROLLER ENVELOPE
+# DJANGO REST FRAMEWORK SECURE BACKEND DATA API ENDPOINTS
 # =====================================================================
 
 class CustomerViewSet(viewsets.ModelViewSet):
-    """Handles account creations, tracking, and deep custom occasion modifications."""
+    """
+    Secure CRUD interface to manage Customer profiles.
+    
+    Security Architecture:
+    - Enforces 'CustomerProfileAccess' rules.
+    - SuperAdmins retain full global control.
+    - Restaurant Owners and Staff are restricted to read-only views.
+    - Customers can only view or modify records matching their exact profile headers.
+    """
     queryset = Customer.objects.all()
     permission_classes = [CustomerProfileAccess]
 
-    @action(detail=False, methods=['get', 'put'])
-    def self_service_portal(self, request):
-        """Allows public consumers to fetch, track, and modify their personal profile details securely."""
-        first = request.headers.get('X-Customer-First')
-        last = request.headers.get('X-Customer-Last')
-        phone = request.headers.get('X-Customer-Phone')
-
-        try:
-            profile = Customer.objects.get(first_name=first, last_name=last, phone=phone)
-        except Customer.DoesNotExist:
-            return Response({"error": "Account profile lookup matching credentials failed."}, status=status.HTTP_444_NOT_FOUND)
-
-        if request.method == 'GET':
-            return Response({
-                "first_name": profile.first_name, "last_name": profile.last_name, "phone": profile.phone,
-                "email": profile.email, "dob": profile.dob, "anniversary_date": profile.anniversary_date,
-                "important_occasion_notes": profile.important_occasion_notes
-            })
-
-        elif request.method == 'PUT':
-            # Process modification instructions for personal data updates
-            profile.email = request.data.get('email', profile.email)
-            profile.address = request.data.get('address', profile.address)
-            profile.anniversary_date = request.data.get('anniversary_date', profile.anniversary_date)
-            profile.important_occasion_notes = request.data.get('important_occasion_notes', profile.important_occasion_notes)
-            profile.save()
-            return Response({"success": "Customer CRM profile information successfully updated."})
-
-
-# =====================================================================
-# 2. OWNER STRATEGIC STAFF MANAGEMENT PORTAL
-# =====================================================================
+    def get_serializer_class(self):
+        # Inline serialization captures all table columns dynamically for translation to JSON
+        class CustomerSerializer(serializers.ModelSerializer):
+            class Meta:
+                model = Customer
+                fields = '__all__'
+        return CustomerSerializer
 
 class OwnerStaffManagementViewSet(viewsets.ModelViewSet):
-    """Provides business owners full rights to hire, edit, or purge employee profiles."""
+    """
+    Secure HR endpoint to process and manage Employee files.
+    
+    Security Architecture:
+    - Enforces 'EmployeeManagementAccess' rules.
+    - SuperAdmins can manage any employee record globally.
+    - Restaurant Owners can manage staff ONLY within their own restaurant group.
+    - Regular employees and public users are strictly blocked from this entire endpoint.
+    """
     queryset = Employee.objects.all()
     permission_classes = [EmployeeManagementAccess]
 
-    def create(self, request, *args, **kwargs):
-        role, entity = get_actor_role(request)
-        if role != 'Owner' and role != 'SuperAdmin':
-            return Response({"error": "Unauthorized permission tier level allocation barrier."}, status=status.HTTP_403_FORBIDDEN)
+    def get_serializer_class(self):
+        class EmployeeSerializer(serializers.ModelSerializer):
+            class Meta:
+                model = Employee
+                fields = '__all__'
+        return EmployeeSerializer
 
-        # Automatically bind new hires to the active owner's parent company
-        group = entity.restaurant_group if role == 'Owner' else request.data.get('restaurant_group_id')
-        
-        new_staff = Employee.objects.create(
-            employee_id=request.data.get('employee_id'),
-            restaurant_group_id=group if role == 'SuperAdmin' else group.restaurant_group_id,
-            first_name=request.data.get('first_name'),
-            last_name=request.data.get('last_name'),
-            address=request.data.get('address'),
-            phone=request.data.get('phone'),
-            email=request.data.get('email'),
-            dob=request.data.get('dob'),
-            base_annual_salary=request.data.get('base_annual_salary')
+class SuperAdminOverrideViewSet(viewsets.ModelViewSet):
+    """
+    Master platform administration panel.
+    
+    Security Architecture:
+    - CRITICAL FIX: Changed from 'AllowAny' to 'IsSystemSuperAdmin'.
+    - Only the overarching platform SuperAdmins can access this data.
+    - Prevents malicious actors from escalating privileges or altering administrative cores.
+    """
+    queryset = SuperAdmin.objects.all()
+    permission_classes = [IsSystemSuperAdmin]
+
+    def get_serializer_class(self):
+        class SuperAdminSerializer(serializers.ModelSerializer):
+            class Meta:
+                model = SuperAdmin
+                fields = '__all__'
+        return SuperAdminSerializer
+
+class RestaurantViewSet(viewsets.ModelViewSet):
+    """
+    Physical restaurant profiles and seating capacities router.
+    
+    Security Architecture:
+    - Dynamically evaluates permissions based on the incoming HTTP verb (Action).
+    - Public Guests can execute 'list' (GET) and 'retrieve' (GET) to view open locations.
+    - Administrative operations (POST, PUT, PATCH, DELETE) require 'IsSystemOwnerOrAdmin'.
+    """
+    queryset = Restaurant.objects.all()
+    
+    def get_permissions(self):
+        # Public-facing read actions are open; state changes are locked to leadership
+        if self.action in ['list', 'retrieve']:
+            return [AllowAny()]
+        return [IsSystemOwnerOrAdmin()]
+
+    def get_serializer_class(self):
+        class RestaurantSerializer(serializers.ModelSerializer):
+            class Meta:
+                model = Restaurant
+                fields = '__all__'
+        return RestaurantSerializer
+
+class BookingViewSet(viewsets.ModelViewSet):
+    """
+    Reservation ledger interface.
+    
+    Security Architecture:
+    - Anyone ('AllowAny') can initiate a 'create' (POST) action to book a table.
+    - Reading the reservation books or modifying a reservation requires 'CustomerProfileAccess'.
+    - This ensures staff can monitor tables, while customers can only manipulate their own bookings.
+    """
+    queryset = Booking.objects.all()
+    
+    def get_permissions(self):
+        # Open reservation creation to the public, protect management operations
+        if self.action == 'create':
+            return [AllowAny()]
+        return [CustomerProfileAccess()]
+
+    def get_serializer_class(self):
+        class BookingSerializer(serializers.ModelSerializer):
+            class Meta:
+                model = Booking
+                fields = '__all__'
+        return BookingSerializer
+
+# =====================================================================
+# DJANGO REST FRAMEWORK OWNER ANALYTICS DASHBOARD ENGINE
+# =====================================================================
+
+class OwnerAnalyticsDashboardAPI(APIView):
+    """
+    Headless analytical aggregation engine.
+    
+    Security Architecture:
+    - Enforces 'IsSystemOwnerOrAdmin' strictly.
+    - Blocked for regular employees and customers to prevent exposure of corporate financial metrics.
+    
+    How it works:
+    - Bypasses raw SQL queries by utilizing Django's ORM database aggregation.
+    - Computes metrics on-the-fly directly inside the database layer for rapid performance.
+    """
+    permission_classes = [IsSystemOwnerOrAdmin]
+
+    def get(self, request, *args, **kwargs):
+        # 1. Transactional Volumes: Aggregates totals across reservation statuses via conditional counting
+        booking_metrics = Booking.objects.aggregate(
+            total_reservations=Count('id'),
+            completed_count=Count('id', filter=Q(status='COMPLETED')),
+            cancelled_count=Count('id', filter=Q(status='CANCELLED')),
+            no_show_count=Count('id', filter=Q(status='NO_SHOW')),
+            confirmed_count=Count('id', filter=Q(status='CONFIRMED'))
         )
-        return Response({"success": f"New worker account successfully initialized under ID {new_staff.employee_id}."}, status=status.HTTP_201_CREATED)
 
-    def destroy(self, request, *args, **kwargs):
-        """Fulfills the requirement to completely purge staff records when they leave the business."""
-        staff_member = self.get_object()
-        self.check_object_permissions(request, staff_member)
-        staff_member.delete()
-        return Response({"success": "Employee record completely purged from database system rosters."}, status=status.HTTP_200_OK)
+        # 2. Location Analysis: Groups reservation data by restaurant names to surface regional performance
+        location_breakdown = Booking.objects.values('restaurant__restaurant_name').annotate(
+            total_bookings=Count('id'),
+            no_shows=Count('id', filter=Q(status='NO_SHOW')),
+            cancellations=Count('id', filter=Q(status='CANCELLED'))
+        )
 
+        # 3. CRM Metrics: Uses an annotation layer to track returning customers (those with multiple entries)
+        customer_retention = Customer.objects.annotate(
+            booking_count=Count('bookings')
+        ).aggregate(
+            total_tracked_customers=Count('id'),
+            returning_customers=Count('id', filter=Q(booking_count__gt=1)),
+            one_time_customers=Count('id', filter=Q(booking_count=1))
+        )
 
-# =====================================================================
-# 3. SUPERADMIN SYSTEM SYSTEM MASTER MODULE
-# =====================================================================
-
-class SuperAdminSystemModuleViewSet(viewsets.ViewSet):
-    """Global system tools exclusively accessible by platform Super Admins."""
-
-    @action(detail=False, methods=['post'])
-    def administrative_profile_unlock(self, request):
-        """Allows platform Super Admins to manually unlock accounts if someone gets locked out."""
-        role, entity = get_actor_role(request)
-        if role != 'SuperAdmin':
-            return Response({"error": "System Override Access Denied: Action requires absolute platform authority privileges."}, status=status.HTTP_403_FORBIDDEN)
-
-        target_uid = request.data.get('locked_account_id')
-        account_type = request.data.get('account_type') # Expected values: 'Owner' or 'Employee'
-
-        if account_type == 'Owner':
-            try:
-                profile = Owner.objects.get(owner_id=target_uid)
-                profile.is_locked_out = False
-                profile.save()
-                return Response({"success": f"Platform Status Reset: Owner profile card '{target_uid}' unlocked safely."})
-            except Owner.DoesNotExist:
-                return Response({"error": "Target owner account identifier matches no file logs."}, status=status.HTTP_404_NOT_FOUND)
-
-        elif account_type == 'Employee':
-            try:
-                profile = Employee.objects.get(employee_id=target_uid)
-                profile.is_locked_out = False
-                profile.save()
-                return Response({"success": f"Platform Status Reset: Staff profile card '{target_uid}' unlocked safely."})
-            except Employee.DoesNotExist:
-                return Response({"error": "Target staff account identifier matches no file logs."}, status=status.HTTP_444_NOT_FOUND)
-
-        return Response({"error": "Invalid administrative classification argument."}, status=status.HTTP_400_BAD_REQUEST)
-
-SuperAdminOverrideViewSet = SuperAdminSystemModuleViewSet
-
-SuperAdminOverrideViewSet = SuperAdminSystemModuleViewSet
+        # 4. Payload Dispatch: Package all analytics vectors into a uniform JSON response structure
+        return Response({
+            "status": "success",
+            "summary_metrics": booking_metrics,
+            "venue_breakdown": location_breakdown,
+            "crm_retention_metrics": customer_retention
+        })

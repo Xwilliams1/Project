@@ -1,7 +1,6 @@
 from rest_framework import permissions
 from .models import SuperAdmin, Owner, Employee
 
-
 def get_actor_role(request):
     """Identifies who is making the request by checking the User ID header."""
     auth_uid = request.META.get('HTTP_X_USER_ID')
@@ -28,9 +27,14 @@ class CustomerProfileAccess(permissions.BasePermission):
     """
     Access Control Rules for Customers:
     - SuperAdmin: Global read/write access.
-    - Owner/Employee: Can view profile/allergies during active service windows, but cannot alter them.
-    - Customer: Full edit rights restricted entirely to their own natural key match.
+    - Owner/Employee: Can view lists and records (SAFE_METHODS), cannot alter them.
+    - Customer: Full edit rights restricted entirely to their own records.
     """
+    def has_permission(self, request, view):
+        role, entity = get_actor_role(request)
+        if view.action == 'list' and role not in ['SuperAdmin', 'Owner', 'Employee']:
+            return False
+        return True
 
     def has_object_permission(self, request, view, obj):
         role, entity = get_actor_role(request)
@@ -53,9 +57,12 @@ class EmployeeManagementAccess(permissions.BasePermission):
     """
     Access Control Rules for HR:
     - SuperAdmin: Full platform control.
-    - Owner: Can create, modify, or delete employees strictly within their own corporate group.
-    - Employee/Customer: Completely blocked.
+    - Owner: Full access to view, create, modify within corporate group constraints.
+    - Employee/Customer: Completely blocked from employee records.
     """
+    def has_permission(self, request, view):
+        role, entity = get_actor_role(request)
+        return role in ['SuperAdmin', 'Owner']
 
     def has_object_permission(self, request, view, obj):
         role, entity = get_actor_role(request)
@@ -66,3 +73,16 @@ class EmployeeManagementAccess(permissions.BasePermission):
             return obj.restaurant_group == entity.restaurant_group
 
         return False
+
+
+class IsSystemOwnerOrAdmin(permissions.BasePermission):
+    """
+    Access Control Rules for Corporate Analytics:
+    - SuperAdmin: Global system analytics access.
+    - Owner: Full access to view calculated metrics dashboards.
+    - Employee/Staff: Explicitly blocked from viewing administrative totals.
+    - Public Guest: Explicitly blocked.
+    """
+    def has_permission(self, request, view):
+        role, entity = get_actor_role(request)
+        return role in ['SuperAdmin', 'Owner']
