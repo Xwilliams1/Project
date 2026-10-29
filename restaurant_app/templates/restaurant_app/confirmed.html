@@ -1,0 +1,18 @@
+{% extends 'restaurant_app/base.html' %}
+{% block title %}Booking confirmed{% endblock %}
+{% block content %}
+<div class="card confirmation">
+  <h1>Booking confirmed</h1>
+  <p>Thanks, {{ booking.customer.first_name }}. A confirmation email has been sent to
+     {{ booking.customer.email }}.</p>
+  <dl>
+    <dt>Reference</dt><dd>#{{ booking.id }}</dd>
+    <dt>Location</dt><dd>{{ booking.restaurant.restaurant_name }}</dd>
+    <dt>Date</dt><dd>{{ booking.booking_date|date:"l j F Y" }}</dd>
+    <dt>Time</dt><dd>{{ booking.booking_time|time:"g:i A" }}</dd>
+    <dt>Guests</dt><dd>{{ booking.guest_count }}</dd>
+    {% if booking.occasion %}<dt>Occasion</dt><dd>{{ booking.occasion }}</dd>{% endif %}
+  </dl>
+  <a class="button" href="{% url 'home' %}">Back to home</a>
+</div>
+{% endblock %}

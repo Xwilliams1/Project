@@ -1,4 +1,8 @@
 #!/usr/bin/env python3
+from restaurant_app.models import (
+    SuperAdmin, RestaurantGroup, Owner, Restaurant,
+    Employee, EmployeeRestaurant, Customer, Allergy, Booking
+)
 import os
 import csv
 import django
@@ -10,14 +14,11 @@ from datetime import datetime
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'core_platform.settings')
 django.setup()
 
-from restaurant_app.models import (
-    SuperAdmin, RestaurantGroup, Owner, Restaurant,
-    Employee, EmployeeRestaurant, Customer, Allergy, Booking
-)
 
 # =====================================================================
 # SECTION 2: HELPERS
 # =====================================================================
+
 
 def parse_date(value):
     """'2026-11-05' -> date object. Empty text -> None."""
@@ -167,7 +168,8 @@ def run_ingestion():
     skipped = 0
     with open('data/employee_restaurants.csv', encoding='utf-8') as f:
         for row in csv.DictReader(f):
-            employee = Employee.objects.get(employee_id=row['employee_id'].strip())
+            employee = Employee.objects.get(
+                employee_id=row['employee_id'].strip())
             restaurant = find_restaurant(row['restaurant_name'],
                                          row.get('restaurant_address', ''))
             if not restaurant:

@@ -1,0 +1,19 @@
+{% extends 'restaurant_app/base.html' %}
+{% block content %}
+<h1>Reserve a table</h1>
+<p class="lead">Choose a location to get started.</p>
+
+<div class="cards">
+  {% for r in restaurants %}
+    <div class="card">
+      <h2>{{ r.restaurant_name }}</h2>
+      <p>{{ r.address }}</p>
+      {% if r.phone %}<p>{{ r.phone }}</p>{% endif %}
+      <p class="muted">Open {{ r.opening_time|time:"g:i A" }} to {{ r.closing_time|time:"g:i A" }}</p>
+      <a class="button" href="{% url 'book' %}?restaurant={{ r.id }}">Book here</a>
+    </div>
+  {% empty %}
+    <p>No locations are available yet.</p>
+  {% endfor %}
+</div>
+{% endblock %}
