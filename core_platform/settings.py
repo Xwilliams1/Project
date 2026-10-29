@@ -12,6 +12,7 @@ DEBUG = True
 
 ALLOWED_HOSTS = []
 
+
 # CORE MODULE REGISTRATION (INSTALLED APPS)
 # =====================================================================
 INSTALLED_APPS = [
@@ -57,7 +58,6 @@ TEMPLATES = [
 WSGI_APPLICATION = 'core_platform.wsgi.application'
 
 
-
 # LIVE POSTGRESQL DATABASE BACKEND CONFIGURATION
 # =====================================================================
 DATABASES = {
@@ -72,7 +72,6 @@ DATABASES = {
 }
 
 
-
 # SECURITY STRATEGIES, INTERNATIONALIZATION, AND FILES
 # =====================================================================
 AUTH_PASSWORD_VALIDATORS = [
@@ -83,9 +82,27 @@ AUTH_PASSWORD_VALIDATORS = [
 ]
 
 LANGUAGE_CODE = 'en-us'
-TIME_ZONE = 'UTC'
+TIME_ZONE = 'Australia/Brisbane'
 USE_I18N = True
 USE_TZ = True
 
 STATIC_URL = 'static/'
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+
+# =====================================================================
+# EMAIL NOTIFICATIONS (Proposal deliverable 4)
+# =====================================================================
+# Console backend prints emails in the terminal instead of sending them.
+# This is how the proposal's synthetic-data rule is met: no real emails go out.
+
+EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
+DEFAULT_FROM_EMAIL = 'bookings@restaurant-saas.test'
+
+
+# =====================================================================
+# LOGIN REDIRECTS (used when the staff dashboard is built)
+# =====================================================================
+
+LOGIN_URL = '/login/'
+LOGIN_REDIRECT_URL = '/dashboard/'
